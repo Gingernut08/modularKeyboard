@@ -16,7 +16,12 @@ TEXT_COLOR = (20, 20, 20)
 key_size = 80
 border_size = key_size // 8
 
-doubleClick = 0.5
+screen_border = 10
+
+keyMax = [WIDTH // key_size, HEIGHT // key_size]
+keyStartPos = [(WIDTH - keyMax[0] * key_size + key_size)//2, (HEIGHT - keyMax[1] * key_size + key_size)//2]
+
+doubleClick = 0.2
 
 font = pygame.font.SysFont("Arial", key_size//3, bold = True)
 label_font = pygame.font.SysFont("Arial", key_size//2, bold = True)
@@ -30,10 +35,10 @@ class Key:
         self.pos = pos
         self.size = key_size
         self.screen = screen
-        self.text = "Q"
+        self.text = ""
         self.drag = False
         self.selected = False
-        self.selectedTime = time.time()
+        self.selectedTime = 0
         self.dragOfset = [0, 0]
 
     def draw(self):
@@ -69,7 +74,11 @@ class Key:
     def update_pos(self, mousePos):
         if not self.drag:
             return
-        self.pos = [mousePos[i] - self.dragOfset[i] for i in range(2)]
+        self.pos = [mousePos[i] for i in range(2)]
+        self.pos = [
+            keyStartPos[i] + round((self.pos[i] - keyStartPos[i]) / self.size) * self.size for i in range(2)
+        ]
+        self.pos = [min(max(self.pos[i], keyStartPos[i] + screen_border + self.size // 2), [WIDTH, HEIGHT][i] - keyStartPos[i] - screen_border - self.size // 2) for i in range(2)]
 
     def collision_check(self, pos):
         return all(self.pos[i] - self.size // 2 < pos[i] <  self.pos[i] + self.size // 2 for i in range(2))
@@ -79,18 +88,23 @@ class Key:
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 if self.collision_check(mousePos):
-                    if self.selected and time.time() - self.selectedTime < doubleClick:
+                    curTime = time.time()
+                    if curTime - self.selectedTime < doubleClick:
                         self.selected = True
                     else:
                         self.drag = True
                         self.dragOfset = [mousePos[i] - self.pos[i] for i in range(2)]
-                    self.selectedTime = time.time()
+                    self.selectedTime = curTime
+                else:
+                    self.selected = False
+                    self.drag = False
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
                 self.drag = False
         self.update_pos(mousePos)
 
-testKey = Key(screen, "001", (100, 100))
+for i in range(100):
+    Key(screen, str(i), (100 + 2 * i, 100))
 
 running = True
 while running:
