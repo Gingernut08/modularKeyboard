@@ -12,6 +12,7 @@ BG_COLOR = (20, 20, 20)
 KEY_COLOR = (200, 200, 200)
 DRAG_COLOR = (200, 220, 200)
 SELECTED_COLOR = (100, 170, 255)
+EDIT_COLOR = (255, 170, 100)
 TEXT_COLOR = (20, 20, 20)
 
 key_size = 80
@@ -28,12 +29,14 @@ doubleClick = 0.2
 
 live_update = True
 
+key_selected = False
+
 SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saves", "autosave_layout.json")
 
 font = pygame.font.SysFont("Arial", key_size//3, bold = True)
-label_font = pygame.font.SysFont("Arial", key_size//2, bold = True)
 
 keys = {}
+items = []
 
 def save_state(filePath = SAVE_FILE):
     data = {
@@ -72,7 +75,7 @@ def load_state(filePath = SAVE_FILE):
         for key_id, state in data["keys"].items():
             key = Key(screen, key_id, state.get("pos", [100, 100]))
             key.size = state.get("size", [key_size, key_size])
-            key.text = state.get("tezt", "")
+            key.text = state.get("text", "")
     except FileNotFoundError:
         pass
 
@@ -80,7 +83,7 @@ def load_state(filePath = SAVE_FILE):
         print("Could not load keyboard layout.")
 
 def check_overlap(key, newPos):
-    for other in keys.values():
+    for other in items:
         if other == key:
             continue
         distanceX = abs(newPos[0] - other.pos[0])
@@ -90,9 +93,13 @@ def check_overlap(key, newPos):
             return True
     return False
 
+class button:
+    pass
+
 class Key:
     def __init__(self, screen, id, pos):
         keys[id] = self
+        items.append(self)
         self.id = id
         self.pos = list(pos)
         self.size = [key_size, key_size]
@@ -100,10 +107,11 @@ class Key:
         self.text = ""
         self.drag = False
         self.selected = False
+        self.edit = False
         self.selectedTime = 0
 
     def draw(self):
-        color = SELECTED_COLOR if self.selected else DRAG_COLOR if self.drag else KEY_COLOR
+        color = SELECTED_COLOR if self.selected else DRAG_COLOR if self.drag else EDIT_COLOR if self.edit else KEY_COLOR
         rect = pygame.Rect(
             self.pos[0] - self.size[0] // 2,
             self.pos[1] - self.size[1] // 2,
@@ -121,7 +129,18 @@ class Key:
             number,
             number.get_rect(center=(self.pos[0], self.pos[1] - self.size[1]/3))
         )
+        
         if self.text:
+            font_size = self.size[0] // 2
+            while font_size > 5:
+                label_font = pygame.font.SysFont("Arial", font_size, bold=True)
+                text_width, text_height = label_font.size(self.text)
+                
+                if text_width <= self.size[0] - 10 and text_height <= self.size[1] - 1:
+                    break
+                
+                font_size -= 1
+
             label = label_font.render(
                 self.text,
                 True,
@@ -209,9 +228,12 @@ class Key:
         return all(self.pos[i] - self.size[i] // 2 < pos[i] <  self.pos[i] + self.size[i] // 2 for i in range(2))
 
     def event(self, event):
+        global key_selected
         mousePos = pygame.mouse.get_pos()
         if event.type == pygame.KEYDOWN:
             if self.selected:
+                self.text = pygame.key.name(event.key)
+            if self.edit:
                 if event.key == pygame.K_UP:
                     self.size[1] += key_size // 4
                 if event.key == pygame.K_DOWN:
@@ -221,8 +243,9 @@ class Key:
                 if event.key == pygame.K_LEFT:
                     self.size[0] = max(self.size[0] - key_size // 4, key_size)
         if event.type == pygame.MOUSEBUTTONDOWN:
+            self.edit = False
+            self.selected = False
             if event.button == 1:
-                self.selected = False
                 if self.collision_check(mousePos):
                     curTime = time.time()
                     if curTime - self.selectedTime < doubleClick:
@@ -233,6 +256,9 @@ class Key:
                 else:
                     self.selected = False
                     self.drag = False
+            if event.button == 3:
+                if self.collision_check(mousePos):
+                    self.edit = True
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
                 if self.drag:
@@ -241,6 +267,8 @@ class Key:
                         self.find_nearest_valid()
         if event.type == pygame.MOUSEMOTION:
             self.update_pos(mousePos)
+        if self.selected:
+            key_selected = True
 
 load_state(SAVE_FILE)
 
@@ -251,12 +279,15 @@ while running:
             running = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                running = False
+                if not key_selected:
+                    running = False
             if event.key == pygame.K_RETURN:
-                Key(screen, str(len(keys) + 1), (100, 100))
+                if not key_selected:
+                    Key(screen, str(len(keys) + 1), (100, 100))
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
                 save_state(SAVE_FILE)
+        key_selected = False
         for key in keys:
             keys[key].event(event)
     
