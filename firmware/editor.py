@@ -68,18 +68,11 @@ def load_state(filePath = SAVE_FILE):
         screen_border = settings.get("screen_border", screen_border)
         live_update = settings.get("live_update", live_update)
 
-        for i in range(len(data["keys"])):
-            Key(screen, str(i + 1), (100, 100))
+
         for key_id, state in data["keys"].items():
-            if key_id not in keys:
-                continue
-
-            key = keys[key_id]
-
-            key.size = state.get("size",key_size)
-            key.pos = state["pos"]
-            key.text = state.get("text", "")
-            key.selected = state.get("selected", False)
+            key = Key(screen, key_id, state.get("pos", [100, 100]))
+            key.size = state.get("size", [key_size, key_size])
+            key.text = state.get("tezt", "")
     except FileNotFoundError:
         pass
 
@@ -92,7 +85,8 @@ def check_overlap(key, newPos):
             continue
         distanceX = abs(newPos[0] - other.pos[0])
         distanceY = abs(newPos[1] - other.pos[1])
-        if distanceX < key.size[0] and distanceY < key.size[1]:
+        if distanceX < (key.size[0] + other.size[0]) / 2 and \
+            distanceY < (key.size[1] + other.size[1]) / 2:
             return True
     return False
 
@@ -100,7 +94,7 @@ class Key:
     def __init__(self, screen, id, pos):
         keys[id] = self
         self.id = id
-        self.pos = pos
+        self.pos = list(pos)
         self.size = [key_size, key_size]
         self.screen = screen
         self.text = ""
