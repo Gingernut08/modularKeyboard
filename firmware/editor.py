@@ -28,8 +28,8 @@ keyStartPos = [(WIDTH - keyMax[0] * key_size + key_size)//2, (HEIGHT - keyMax[1]
 doubleClick = 0.2
 
 live_update = True
-
 key_selected = False
+remove_assign = False
 
 SAVE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saves", "autosave_layout.json")
 
@@ -37,6 +37,17 @@ font = pygame.font.SysFont("Arial", key_size//3, bold = True)
 
 keys = {}
 items = []
+
+def clear_button(button = None, *kwargs):
+    global remove_assign
+    button.selected = not button.selected
+    if button.selected:
+        remove_assign = True
+    else:
+        remove_assign = False
+
+
+
 
 def save_state(filePath = SAVE_FILE):
     data = {
@@ -94,8 +105,62 @@ def check_overlap(key, newPos):
     return False
 
 class button:
-    pass
+    def __init__(self, screen, pos, size, label, func, color, altColor):
+        items.append(self)
+        self.id = id
+        self.pos = list(pos)
+        self.size = list(size)
+        self.screen = screen
+        self.text = label
+        self.selected = False
+        self.function = func
+        self.color = color
+        self.altColor = altColor
 
+    def collision_check(self, pos):
+        return all(self.pos[i] < pos[i] <  self.pos[i] + self.size[i] for i in range(2))
+
+    def event(self, event):
+        mousePos = pygame.mouse.get_pos()
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                if self.collision_check(mousePos):
+                    self.function(button = self)
+
+    def draw(self):
+        color = self.altColor if self.selected else self.color
+        rect = pygame.Rect(
+            self.pos[0],
+            self.pos[1],
+            self.size[0],
+            self.size[1]
+        )
+        pygame.draw.rect(
+            self.screen,
+            color,
+            rect,
+            border_radius = min(self.size) // 8
+        )
+        if self.text:
+            font_size = self.size[0] // 2
+            while font_size > 5:
+                label_font = pygame.font.SysFont("Arial", font_size, bold=True)
+                text_width, text_height = label_font.size(self.text)
+                
+                if text_width <= self.size[0] - 10 and text_height <= self.size[1] - 1:
+                    break
+                
+                font_size -= 1
+
+            label = label_font.render(
+                self.text,
+                True,
+                TEXT_COLOR
+            )
+            self.screen.blit(
+                label,
+                label.get_rect(center=[self.pos[i] + self.size[i] // 2 for i in range(2)])
+            )
 class Key:
     def __init__(self, screen, id, pos):
         keys[id] = self
@@ -256,6 +321,9 @@ class Key:
             self.selected = False
             if event.button == 1:
                 if self.collision_check(mousePos):
+                    if remove_assign:
+                        self.text = ""
+                        return
                     curTime = time.time()
                     if curTime - self.selectedTime < doubleClick:
                         self.selected = True
@@ -280,6 +348,7 @@ class Key:
             key_selected = True
 
 load_state(SAVE_FILE)
+button(screen, [100, 100], [300, 100], "DELETE_ASSIGNMENT", clear_button, KEY_COLOR, (255, 120, 100))
 
 running = True
 while running:
@@ -297,12 +366,12 @@ while running:
             if event.button == 1:
                 save_state(SAVE_FILE)
         key_selected = False
-        for key in keys:
-            keys[key].event(event)
+        for item in items:
+            item.event(event)
     
     screen.fill(BG_COLOR)
-    for key in keys:
-        keys[key].draw()
+    for item in items:
+        item.draw()
     pygame.display.flip()
 
 save_state(SAVE_FILE)
