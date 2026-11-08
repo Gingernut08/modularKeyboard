@@ -112,6 +112,8 @@ class Key:
 
     def draw(self):
         color = SELECTED_COLOR if self.selected else DRAG_COLOR if self.drag else EDIT_COLOR if self.edit else KEY_COLOR
+        mult = 0.9
+        offset = 1
         rect = pygame.Rect(
             self.pos[0] - self.size[0] // 2,
             self.pos[1] - self.size[1] // 2,
@@ -124,10 +126,17 @@ class Key:
             rect,
             border_radius = border_size
         )
+        pygame.draw.rect(
+            self.screen,
+            [color[0] * mult, color[1] * mult, color[2] * mult],
+            [rect[0] + offset, rect[1] + offset, self.size[0] - 2 * offset, self.size[1] - 2 * offset],
+            border_radius = border_size - offset,
+            width = 3
+        )
         number = font.render(self.id, True, TEXT_COLOR)
         self.screen.blit(
             number,
-            number.get_rect(center=(self.pos[0], self.pos[1] - self.size[1]/3))
+            number.get_rect(center=(self.pos[0], self.pos[1] - 9 * self.size[1] / 28))
         )
         
         if self.text:
@@ -232,7 +241,7 @@ class Key:
         mousePos = pygame.mouse.get_pos()
         if event.type == pygame.KEYDOWN:
             if self.selected:
-                self.text = pygame.key.name(event.key)
+                self.text = pygame.key.name(event.key).upper()
             if self.edit:
                 if event.key == pygame.K_UP:
                     self.size[1] += key_size // 4
