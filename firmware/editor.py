@@ -1,4 +1,4 @@
-import pygame, json, tkinter, time, os
+import pygame, json, tkinter, time, os, serial
 from tkinter import filedialog, messagebox
 
 WIDTH, HEIGHT = 1920, 1080
@@ -39,11 +39,66 @@ keys = {}
 items = []
 
 def create_buttons():
-    button(screen, [100, 100], [300, 100], "DELETE_ASSIGNMENT", clear_button, KEY_COLOR, (255, 120, 100))
-    button(screen, [100, 250], [125, 100], "LOAD_PRESET", load_button, KEY_COLOR, (120, 200, 100))
-    button(screen, [275, 250], [125, 100], "SAVE_PRESET", save_button, KEY_COLOR, (120, 200, 100))
+    button(screen, [100, 100], [500, 100], "DELETE_ASSIGNMENT", clear_button, KEY_COLOR, (255, 120, 100))
+    button(screen, [100, 250], [225, 100], "LOAD_PRESET", load_button, KEY_COLOR, (120, 200, 100))
+    button(screen, [375, 250], [225, 100], "SAVE_PRESET", save_button, KEY_COLOR, (120, 200, 100))
+    button(screen, [650, 100], [400, 250], "UPLOAD", upload_assignment, KEY_COLOR, (120, 200, 100))
 
+def upload_assignment(button=None, **kwargs):
+    if button:
+        button.selected = True
+        button.draw()
+        pygame.display.flip()
 
+    SERIAL_PORT = "COM3"
+    BAUD_RATE = 115200
+
+    try:
+        with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=3) as esp:
+            time.sleep(2)
+            esp.reset_input_buffer()
+
+            esp.write(b"BEGIN\n")
+
+            for key_id, key in keys.items():
+                assignment = key.text.lower()
+
+                if "," in assignment or "\n" in assignment:
+                    raise ValueError(
+                        f"Invalid assignment for key {key_id}"
+                    )
+
+                esp.write(
+                    f"SET,{key_id},{assignment}\n".encode("utf-8")
+                )
+
+            esp.write(b"COMMIT\n")
+            esp.flush()
+
+            response = esp.readline().decode(
+                "utf-8", errors="replace"
+            ).strip()
+
+            if response == "OK":
+                messagebox.showinfo(
+                    "Upload Complete",
+                    "Keyboard layout uploaded successfully."
+                )
+            else:
+                messagebox.showerror(
+                    "Upload Failed",
+                    f"ESP32 response: {response or 'No response'}"
+                )
+
+    except Exception as e:
+        print(f"Upload error: {e}")
+        messagebox.showerror("Upload Error", str(e))
+
+    finally:
+        if button:
+            button.selected = False
+            button.draw()
+            pygame.display.flip()
 
 def clear_button(button = None, **kwargs):
     global remove_assign
