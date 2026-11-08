@@ -38,7 +38,14 @@ font = pygame.font.SysFont("Arial", key_size//3, bold = True)
 keys = {}
 items = []
 
-def clear_button(button = None, *kwargs):
+def create_buttons():
+    button(screen, [100, 100], [300, 100], "DELETE_ASSIGNMENT", clear_button, KEY_COLOR, (255, 120, 100))
+    button(screen, [100, 250], [125, 100], "LOAD_PRESET", load_button, KEY_COLOR, (120, 200, 100))
+    button(screen, [275, 250], [125, 100], "SAVE_PRESET", save_button, KEY_COLOR, (120, 200, 100))
+
+
+
+def clear_button(button = None, **kwargs):
     global remove_assign
     button.selected = not button.selected
     if button.selected:
@@ -46,7 +53,59 @@ def clear_button(button = None, *kwargs):
     else:
         remove_assign = False
 
+def save_button(button = None, **kwargs):
+    button.selected = True
+    button.draw()
+    pygame.display.flip()
+    
+    root = tkinter.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    
+    file_path = filedialog.asksaveasfilename(
+        title = "Save Keytboard Layout",
+        filetypes = [
+            ("JSON Files", "*.json"),
+            ("ALL Files", "*.*")
+        ]
+    )
+    
+    root.destroy()
+    
+    if file_path:
+        save_state(file_path)
+    
+    button.selected = False
+    button.draw()
+    pygame.display.flip()
 
+def load_button(button = None, **kwargs):
+    button.selected = True
+    button.draw()
+    pygame.display.flip()
+    root =  tkinter.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    
+    file_path = filedialog.askopenfilename(
+        title = "Open Keyboard Layout",
+        filetypes = [
+            ("JSON Files", "*.json"),
+            ("All Files", "*.*")
+        ]
+    )
+    
+    root.destroy()
+    
+    if file_path:
+        keys.clear()
+        items.clear()
+        load_state(file_path)
+        create_buttons()
+
+    button.selected = False
+    button.draw()
+    pygame.display.flip()
 
 
 def save_state(filePath = SAVE_FILE):
@@ -348,8 +407,8 @@ class Key:
             key_selected = True
 
 load_state(SAVE_FILE)
-button(screen, [100, 100], [300, 100], "DELETE_ASSIGNMENT", clear_button, KEY_COLOR, (255, 120, 100))
 
+create_buttons()
 running = True
 while running:
     for event in pygame.event.get():
